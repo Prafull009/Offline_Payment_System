@@ -6,14 +6,7 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "gradleCommand": ":app:assembleDebug",
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_NO_GRADLE_CACHE": "1"
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal",
@@ -22,14 +15,7 @@
       }
     },
     "production": {
-      "autoIncrement": true,
-      "android": {
-        "gradleCommand": ":app:assembleDebug",
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_NO_GRADLE_CACHE": "1"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {

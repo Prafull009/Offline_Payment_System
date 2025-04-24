@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "bluepay",
+    "slug": "bluepay",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -27,12 +27,12 @@
         "origin": false
       },
       "eas": {
-        "projectId": "1f8c70e2-8f3c-43db-b04e-37f9065eee55"
+        "projectId": "0ace2a27-188a-4ffa-befa-34c4b6435624"
       }
     },
-    "owner": "prafullcb",
+    "owner": "prafullb",
     "android": {
-      "package": "com.prafullcb.boltexponativewind"
+      "package": "com.prafullb.bluepay"
     }
   }
 }

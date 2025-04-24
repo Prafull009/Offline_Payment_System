@@ -273,6 +273,15 @@ import TransactionModal from '@/components/TransactionModal';
 import { Camera, CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
 
+interface VerificationData {
+  status: string;
+  senderAddress: string;
+  receiverAddress: string;
+  amount: number;
+  timestamp: string;
+  transactionId: string;
+}
+
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -284,12 +293,53 @@ export default function ScanScreen() {
     amount: 0,
   });
   const { createTransaction, walletAddress } = useWalletStore();
+  const [verificationData, setVerificationData] = useState<VerificationData | null>(null);
   const router = useRouter();
 
+  // const handleBarCodeScanned = ({ data }: { data: string }) => {
+  //   setScanned(true);
+  //   try {
+  //     const scannedData = JSON.parse(data);
+  //     if (scannedData.walletAddress && scannedData.deviceId) {
+  //       // Check if amount is included in the QR code
+  //       const amount = scannedData.amount !== undefined ? parseFloat(scannedData.amount) : 0;
+        
+  //       setReceiverInfo({
+  //         walletAddress: scannedData.walletAddress,
+  //         deviceId: scannedData.deviceId,
+  //         amount: amount,
+  //       });
+        
+  //       // If amount is already specified in QR, we can bypass the amount input
+  //       if (amount > 0) {
+  //         // Directly show confirmation or process payment
+  //         handleConfirmTransaction(amount);
+  //       } else {
+  //         // Show modal to enter amount
+  //         setShowModal(true);
+  //       }
+  //     } else {
+  //       Alert.alert('Invalid QR Code', 'The scanned QR code is not valid for payments.');
+  //       setScanned(false);
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Error', 'Could not process the QR code.');
+  //     setScanned(false);
+  //   }
+  // };
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     setScanned(true);
     try {
       const scannedData = JSON.parse(data);
+      
+      // Check if this is an acknowledgement QR code (has status and transactionId)
+      if (scannedData.status && scannedData.transactionId) {
+        // Handle acknowledgement QR code scanning
+        handleAcknowledgementScan(scannedData);
+        return;
+      }
+      
+      // Regular payment QR code handling
       if (scannedData.walletAddress && scannedData.deviceId) {
         // Check if amount is included in the QR code
         const amount = scannedData.amount !== undefined ? parseFloat(scannedData.amount) : 0;
@@ -317,6 +367,36 @@ export default function ScanScreen() {
       setScanned(false);
     }
   };
+  
+  // New function to handle acknowledgement QR scanning
+  const handleAcknowledgementScan = (data: any) => {
+    if (data.receiverAddress === walletAddress) {
+      // Create a receive transaction using the existing createTransaction function
+      createTransaction({
+        type: 'receive',
+        amount: data.amount,
+        receiverAddress: walletAddress, // This is the current wallet
+        description: `Received ₹${data.amount} from ${data.senderAddress.substring(0, 6)}...`,
+        date: new Date().toLocaleDateString(),
+        // You can add this if your Transaction type supports it
+        // transactionId: data.transactionId 
+      });
+      
+      // Show verification screen
+      setVerificationData(data);
+    } else {
+      // This acknowledgement is not for this wallet
+      Alert.alert(
+        'Not Your Transaction',
+        'This payment verification is for a different wallet.',
+        [{ text: 'OK', onPress: () => setScanned(false) }]
+      );
+    }
+  };
+
+  // const handleAcknowledgementScan = (data: any) => {
+  //   setVerificationData(data);
+  // };
 
   const handleConfirmTransaction = (amount: number) => {
     if (amount <= 0) {
@@ -358,6 +438,63 @@ export default function ScanScreen() {
     setScanned(false);
     router && router.push('/');
   };
+
+  if (verificationData) {
+    return (
+      <SafeAreaView style={styles.acknowledgeContainer}>
+        <View style={styles.acknowledgeContent}>
+          <View style={styles.successHeader}>
+            <View style={styles.successIconContainer}>
+              <Check size={32} color="#FFFFFF" />
+            </View>
+            <Text style={styles.successTitle}>Transaction Verified</Text>
+            <Text style={styles.successAmount}>₹{verificationData.amount.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.verificationDetails}>
+            <Text style={styles.verificationTitle}>Transaction Details</Text>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Transaction ID:</Text>
+              <Text style={styles.detailValue}>{verificationData.transactionId}</Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Sender:</Text>
+              <Text style={styles.detailValue}>
+                {verificationData.senderAddress.substring(0, 6)}...
+              </Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Receiver:</Text>
+              <Text style={styles.detailValue}>
+                {verificationData.receiverAddress.substring(0, 6)}...
+              </Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Date:</Text>
+              <Text style={styles.detailValue}>
+                {new Date(verificationData.timestamp).toLocaleString()}
+              </Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.doneButton} 
+            onPress={() => {
+              setVerificationData(null);
+              setScanned(false);
+              router && router.push('/');
+            }}
+          >
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (showAcknowledgement) {
     return (
@@ -686,4 +823,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
+  // Add to your styles
+verificationDetails: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 16,
+  padding: 20,
+  marginBottom: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+  elevation: 2,
+},
+verificationTitle: {
+  fontFamily: 'Inter-SemiBold',
+  fontSize: 18,
+  color: '#18181B',
+  marginBottom: 16,
+  alignSelf: 'center',
+},
+detailRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingVertical: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: '#F4F4F5',
+},
+detailLabel: {
+  fontFamily: 'Inter-Medium',
+  fontSize: 14,
+  color: '#71717A',
+},
+detailValue: {
+  fontFamily: 'Inter-SemiBold',
+  fontSize: 14,
+  color: '#18181B',
+},
 });
